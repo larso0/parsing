@@ -18,6 +18,7 @@ char* token_begin(char* str, char* delims)
         return NULL;
     }
     for(; strchr(delims, *str); str++);
+    if(*str == '\0') return NULL;
     return str;
 }
 
