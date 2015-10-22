@@ -10,6 +10,7 @@
 #include "tokens.h"
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 char token_characters[] = "()+-*/%";
 char delimiter_characters[] = " \t\r\n";
@@ -184,30 +185,57 @@ parse_data* parse_expr(char* tokens)
         return make_parse_data(NULL, NULL,
                 "Token string contains no tokens. - in parse_expr\n");
     }
-    if(*tokens == '(')
+
+    char* beg = NULL;
+    char* end = tokens;
+    while(beg = token_begin(end, delimiter_characters))
     {
-        tokens++;
-        parse_data* data = parse_expr(tokens);
-        if(data == NULL) return NULL;
-        if(data->error)
-        {
-            parse_error(data, "- in parse_expr\n");
-            return data;
-        }
-        tokens = data->rest_tokens;
-        parse_data* data_paren = expect_token(tokens, ")");
-        if(data_paren == NULL)
-        {
-            parse_error(data, "expect_token returned a NULL pointer. - in parse_expr\n");
-            return data;
-        }
-        if(data_paren->error)
-        {
-            parse_error(data, data_paren->error);
-            parse_error(data, "- in parse_expr\n");
-        }
-        free_parse_data(data_paren);
-        return data;
+        end = token_end(beg, delimiter_characters, token_characters);
+        //TODO implement rest of shunting-yard algorithm
     }
-    //TODO implement shunting-yard algorithm
+
+}
+
+parse_data* parse_number(char* tokens)
+{
+    if(tokens == NULL)
+    {
+        return make_parse_data(NULL, NULL,
+                "Token string is a NULL pointer. - in parse_number\n");
+    }
+    tokens = token_begin(tokens, delimiter_characters);
+    if(tokens == NULL)
+    {
+        return make_parse_data(NULL, NULL,
+                "Token string contains no tokens. - in parse_number\n");
+    }
+
+    float number = 0.f;
+    char* end = tokens;
+    for(; '0' <= end[0] && end[0] <= '9'; end++);
+    char* i = tokens;
+    for(; i < end; i++)
+    {
+        number += (*i - '0') * pow(10, end - i - 1);
+    }
+    if(*end == '.')
+    {
+        end++;
+        i++;
+        for(; '0' <= end[0] && end[0] <= '9'; end++);
+        char* j = i;
+        for(; j < end; j++)
+        {
+            number += (*j - '0') * pow(10, -(j - i - 1));
+        }
+    }
+
+    ast* num = make_number_expr(number);
+    if(num == NULL)
+    {
+        return make_parse_data(NULL, end,
+                "Could not allocate memory for ast. - in parse_number\n");
+    }
+
+    return make_parse_data(num, end, NULL);
 }
